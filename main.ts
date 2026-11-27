@@ -1,6 +1,6 @@
 // makefun-x-reposts-02 entry (Node 22, standard library only).
 //
-// The entry is the X posts themselves: seven posts from one public X account,
+// The entry is the X posts themselves: nine posts from one public X account,
 // each quoting or replying to a different post of @makefunai, with make.fun
 // (or @makefunai) and the entrant's play code in each post's own words.
 // This program only hands their addresses to the gate: it copies POSTS.json
@@ -37,17 +37,39 @@ function validatePostsJson(source: string): void {
     process.exit(1);
   }
 
+  const posts = (data as { posts: unknown[] }).posts;
+
+  // Competition shape: at most 15 entries, every one a status URL of the
+  // single entry account, and no post listed twice (each entry must quote
+  // or reply to a different pool post, so a duplicate address is an error).
+  const statusPattern = /^https:\/\/x\.com\/zshdivid\/status\/\d+$/;
+  const seenIds = new Set<string>();
+  let shapeOk = posts.length <= 15;
+  for (const entry of posts) {
+    if (typeof entry !== 'string' || !statusPattern.test(entry)) {
+      shapeOk = false;
+      break;
+    }
+    const id = entry.split('/').pop() as string;
+    if (seenIds.has(id)) {
+      shapeOk = false;
+      break;
+    }
+    seenIds.add(id);
+  }
+
   if (
     typeof data !== 'object' ||
     data === null ||
     !Array.isArray((data as { posts?: unknown }).posts) ||
-    (data as { posts: unknown[] }).posts.length === 0 ||
-    !(data as { posts: unknown[] }).posts.every(
+    posts.length === 0 ||
+    !posts.every(
       (entry) => typeof entry === 'string' && entry.startsWith('https://'),
-    )
+    ) ||
+    !shapeOk
   ) {
     console.error(
-      `Invalid ${source}: expected an object with a non-empty "posts" array of https:// URLs`,
+      `Invalid ${source}: expected an object with a "posts" array of 1-15 distinct https://x.com/zshdivid/status/<id> URLs`,
     );
     process.exit(1);
   }
